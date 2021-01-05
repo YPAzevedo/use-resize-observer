@@ -3,38 +3,47 @@ import ResizeObserver from "resize-observer-polyfill";
 import "./styles.css";
 
 function useResizeObserver() {
-  const [node, setNode] = React.useState(null);
+  const [, rerender] = React.useReducer(() => []);
+  const nodeRef = React.useRef(null);
   const [entry, setEntry] = React.useState({});
 
   const [resizeObserver] = React.useState(
     () => new ResizeObserver(([entry]) => setEntry(entry))
   );
 
-  const bindObserver = { ref: setNode };
-
+  const node = nodeRef.current;
   React.useLayoutEffect(() => {
     // Update position of element on window resize
-    const handleWindowResize = () => setEntry(node.getBoundingClientRect());
-    if (node) window.addEventListener("resize", handleWindowResize);
+    const _node = node || nodeRef.current;
+    const handleWindowResize = () => setEntry(_node.getBoundingClientRect());
+    if (_node) window.addEventListener("resize", handleWindowResize);
     return () => {
-      if (node) window.removeEventListener("resize", handleWindowResize);
+      if (_node) window.removeEventListener("resize", handleWindowResize);
     };
   }, [node]);
 
   React.useLayoutEffect(() => {
-    if (node) resizeObserver.observe(node);
+    const _node = node || nodeRef.current;
+    if (_node) resizeObserver.observe(_node);
     return () => {
-      if (node) {
+      if (_node) {
         resizeObserver.disconnect();
       }
     };
   }, [resizeObserver, node]);
 
-  return [entry, bindObserver, setNode];
+  return [
+    entry,
+    nodeRef,
+    (el) => {
+      nodeRef.current = el;
+      rerender();
+    }
+  ];
 }
 
 export default function App() {
-  const [entry, bindObserver, updateAnchor] = useResizeObserver();
+  const [entry, ref, updateAnchor] = useResizeObserver();
 
   const rect = entry.target?.getBoundingClientRect() || {};
 
@@ -60,7 +69,7 @@ export default function App() {
       </span>
       <h2>Resize the textarea or window</h2>
       <textarea
-        {...bindObserver}
+        ref={ref}
         onMouseEnter={(e) => updateAnchor(e.target)}
         readOnly
         value={JSON.stringify(rect, null, 2)}
