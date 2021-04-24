@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback } from "react";
 import ResizeObserver from "resize-observer-polyfill";
 import "./styles.css";
 
@@ -14,32 +14,30 @@ function useResizeObserver() {
   const node = nodeRef.current;
   React.useLayoutEffect(() => {
     // Update position of element on window resize
-    const _node = node || nodeRef.current;
-    const handleWindowResize = () => setEntry(_node.getBoundingClientRect());
-    if (_node) window.addEventListener("resize", handleWindowResize);
+    const element = node || nodeRef.current;
+    const handleWindowResize = () => setEntry(element.getBoundingClientRect());
+    if (element) window.addEventListener("resize", handleWindowResize);
     return () => {
-      if (_node) window.removeEventListener("resize", handleWindowResize);
+      if (element) window.removeEventListener("resize", handleWindowResize);
     };
   }, [node]);
 
   React.useLayoutEffect(() => {
-    const _node = node || nodeRef.current;
-    if (_node) resizeObserver.observe(_node);
+    const element = node || nodeRef.current;
+    if (element) resizeObserver.observe(element);
     return () => {
-      if (_node) {
+      if (element) {
         resizeObserver.disconnect();
       }
     };
   }, [resizeObserver, node]);
 
-  return [
-    entry,
-    nodeRef,
-    (el) => {
-      nodeRef.current = el;
-      rerender();
-    }
-  ];
+  const updateCurrentNode = useCallback((newNode) => {
+    nodeRef.current = newNode;
+    rerender();
+  }, []);
+
+  return [entry, nodeRef, updateCurrentNode];
 }
 
 export default function App() {
